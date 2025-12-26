@@ -11,5 +11,5 @@ log/
 *.pyc
 *.swp
 *.egg-info
-
+*.pth
 
