@@ -1,0 +1,15 @@
+
+# ROS2 build artifacts
+build/
+install/
+log/
+
+# Editor files
+.vscode/
+
+# Optional: ignore any temp files
+*.pyc
+*.swp
+*.egg-info
+
+
