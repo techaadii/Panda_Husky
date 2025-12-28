@@ -23,7 +23,7 @@ class GpuSyncedReach(Node):
         super().__init__('gpu_synced_reach_node')
 
         # ===================== CONFIG =====================
-        self.GRASP_OFFSET = 0.01
+        self.GRASP_OFFSET = 0.1
         self.CAMERA_OFFSET = 0.35
         self.MAX_LIN_VEL = 0.15
         self.KP_DIST = 0.4
@@ -156,15 +156,16 @@ class GpuSyncedReach(Node):
         cv2.waitKey(1)
 
     # ===================================================
+    # ===================================================
     def control_loop(self):
-        if not self.data_ready or self.is_latched:
+        if not self.data_ready:
             return
 
         self.data_ready = False
 
         result = self.estimate_distance_and_error()
         if result is None:
-            self.cmd_pub.publish(Twist())
+            self.cmd_pub.publish(Twist())  # stop if no target
             return
 
         raw_dist, err_y = result
@@ -172,14 +173,27 @@ class GpuSyncedReach(Node):
 
         self.get_logger().info(f"Distance: {dist:.3f} m")
 
-        if dist <= self.GRASP_OFFSET:
-            self.cmd_pub.publish(Twist())
+        # ---------- GRASP CHECK ----------
+        GRASP_EPSILON = 0.01  # small tolerance to handle floating-point errors
+        if dist <= self.GRASP_OFFSET + GRASP_EPSILON:
+            cmd = Twist()
+            cmd.linear.x = 0.0
+            cmd.angular.z = 0.0
+            self.cmd_pub.publish(cmd)
             self.is_latched = True
+            self.get_logger().info("Target reached. Stopping and latching.")
             return
 
+        # ---------- CONTROL ----------
         cmd = Twist()
         cmd.linear.x = min(self.KP_DIST * (dist - self.GRASP_OFFSET), self.MAX_LIN_VEL)
         cmd.angular.z = -self.KP_ANG * err_y
+
+        # Clamp very small velocities to zero
+        if abs(cmd.linear.x) < 1e-3:
+            cmd.linear.x = 0.0
+        if abs(cmd.angular.z) < 1e-3:
+            cmd.angular.z = 0.0
 
         self.cmd_pub.publish(cmd)
 
