@@ -14,3 +14,5 @@ log/
 *.pth
 *.pt
 
+Franka_Panda_Color_Sorting_Robot/
+pymoveit2/
